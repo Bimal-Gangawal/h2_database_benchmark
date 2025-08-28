@@ -24,7 +24,7 @@ public class H2Benchmark {
             // Recreate the table for a clean benchmark
             try (Statement stmt = connection.createStatement()) {
                 stmt.execute("DROP TABLE IF EXISTS benchmark");
-                stmt.execute("CREATE TABLE benchmark (id INT PRIMARY KEY, name VARCHAR(255), col1 VARCHAR(255), col2 VARCHAR(255), col3 VARCHAR(255), col4 VARCHAR(255), col5 VARCHAR(255), col6 VARCHAR(255), col7 VARCHAR(255), col8 VARCHAR(255), col9 VARCHAR(255), col10 VARCHAR(255))");
+                stmt.execute("CREATE TABLE benchmark (id INT PRIMARY KEY, name VARCHAR(255), col1 VARCHAR(255), col2 VARCHAR(255), col3 VARCHAR(255), col4 VARCHAR(255), col5 VARCHAR(255), col6 VARCHAR(255), col7 VARCHAR(255), col8 VARCHAR(255), col9 VARCHAR(255), col10 VARCHAR(255), UNIQUE(col1, col2, col3))");
             }
 
             // Initial load of 1M rows
@@ -56,7 +56,10 @@ public class H2Benchmark {
             for (int i = 0; i < rowCount; i++) {
                 pstmt.setInt(1, i);
                 pstmt.setString(2, "User" + i);
-                for (int j = 1; j <= 10; j++) {
+                pstmt.setString(3, "Val" + i);
+                pstmt.setString(4, "Val" + i);
+                pstmt.setString(5, "Val" + i);
+                for (int j = 4; j <= 10; j++) {
                     pstmt.setString(j + 2, "Value" + j);
                 }
                 pstmt.executeUpdate();
@@ -72,10 +75,17 @@ public class H2Benchmark {
             for (int i = 0; i < OPERATION_COUNT; i++) {
                 pstmt.setInt(1, startId + i);
                 pstmt.setString(2, "User" + (startId + i));
-                for (int j = 1; j <= 10; j++) {
+                pstmt.setString(3, "Val" + (i % 50000));
+                pstmt.setString(4, "Val" + (i % 50000));
+                pstmt.setString(5, "Val" + (i % 50000));
+                for (int j = 4; j <= 10; j++) {
                     pstmt.setString(j + 2, "Value" + j);
                 }
-                pstmt.executeUpdate();
+                try {
+                    pstmt.executeUpdate();
+                } catch (Exception e) {
+                    // Ignore duplicate key exceptions
+                }
             }
         }
         long endTime = System.currentTimeMillis();
@@ -85,12 +95,15 @@ public class H2Benchmark {
     private static long benchmarkMerges(Connection connection, int startId) throws Exception {
         System.out.println("\nRunning MERGE benchmark...");
         long startTime = System.currentTimeMillis();
-        String sql = "MERGE INTO benchmark (id, name, col1, col2, col3, col4, col5, col6, col7, col8, col9, col10) KEY(id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "MERGE INTO benchmark (id, name, col1, col2, col3, col4, col5, col6, col7, col8, col9, col10) KEY(col1, col2, col3) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             for (int i = 0; i < OPERATION_COUNT; i++) {
                 pstmt.setInt(1, startId + i);
                 pstmt.setString(2, "User" + (startId + i));
-                for (int j = 1; j <= 10; j++) {
+                pstmt.setString(3, "Val" + (i % 50000));
+                pstmt.setString(4, "Val" + (i % 50000));
+                pstmt.setString(5, "Val" + (i % 50000));
+                for (int j = 4; j <= 10; j++) {
                     pstmt.setString(j + 2, "Value" + j);
                 }
                 pstmt.executeUpdate();
